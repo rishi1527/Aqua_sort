@@ -1,14 +1,13 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 class AnimatedBottlesWidget extends StatefulWidget {
   final double height;
 
-  const AnimatedBottlesWidget({
-    super.key,
-    this.height = 175,
-  });
+  const AnimatedBottlesWidget({super.key, this.height = 175});
 
   @override
   State<AnimatedBottlesWidget> createState() => _AnimatedBottlesWidgetState();
@@ -40,15 +39,18 @@ class _AnimatedBottlesWidgetState extends State<AnimatedBottlesWidget>
       builder: (context, _) {
         final double t = _idleController.value * 2 * math.pi;
 
-        // Subtle floating and tilting oscillations
-        final double floatLeft = math.sin(t) * 4.0;
-        final double tiltLeft = -0.12 + math.sin(t + 0.5) * 0.02;
+        // Subtle floating and tilting oscillations matching Stitch design
+        // Left Bottle (-8deg / -0.14rad)
+        final double floatLeft = math.sin(t) * 3.5;
+        final double tiltLeft = -0.14 + math.sin(t + 0.5) * 0.015;
 
-        final double floatCenter = math.sin(t + 1.2) * 5.5;
-        final double tiltCenter = math.sin(t + 2.0) * 0.025;
+        // Center Bottle (Hero, Upright, Elevated)
+        final double floatCenter = math.sin(t + 1.2) * 4.5;
+        final double tiltCenter = math.sin(t + 2.0) * 0.015;
 
-        final double floatRight = math.sin(t + 2.4) * 4.0;
-        final double tiltRight = 0.12 + math.sin(t + 2.8) * 0.02;
+        // Right Bottle (+9deg / +0.157rad)
+        final double floatRight = math.sin(t + 2.4) * 3.5;
+        final double tiltRight = 0.157 + math.sin(t + 2.8) * 0.015;
 
         return SizedBox(
           height: widget.height,
@@ -59,13 +61,15 @@ class _AnimatedBottlesWidgetState extends State<AnimatedBottlesWidget>
               Positioned.fill(
                 child: Center(
                   child: Container(
-                    width: 220,
-                    height: 120,
+                    width: 240,
+                    height: 130,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.aquaGlow.withValues(alpha: 0.16 + math.sin(t) * 0.04),
+                          color: AppTheme.primaryContainer.withValues(
+                            alpha: 0.16 + math.sin(t) * 0.04,
+                          ),
                           blurRadius: 48,
                           spreadRadius: 8,
                         ),
@@ -83,7 +87,9 @@ class _AnimatedBottlesWidgetState extends State<AnimatedBottlesWidget>
               // Ambient ascending micro-bubbles
               Positioned.fill(
                 child: CustomPaint(
-                  painter: _BottleBubblePainter(progress: _idleController.value),
+                  painter: _BottleBubblePainter(
+                    progress: _idleController.value,
+                  ),
                 ),
               ),
 
@@ -92,19 +98,21 @@ class _AnimatedBottlesWidgetState extends State<AnimatedBottlesWidget>
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Left Bottle: Tilted slightly left, 4 layers: Blue, Purple, Pink, Cyan
+                  // Left Bottle: Tilted -8deg, 4 layers: Bottom Pink #FF4DA6, Purple #7655D9, Blue #087ECA, Top Cyan #38D9FF
                   Transform.translate(
-                    offset: Offset(0, floatLeft),
+                    offset: Offset(0, -6 + floatLeft),
                     child: Transform.rotate(
                       angle: tiltLeft,
-                      child: const _SingleBottleWidget(
-                        width: 46,
-                        height: 132,
-                        liquidColors: [
-                          Color(0xFF087ECA), // Blue
-                          Color(0xFF9D4EDD), // Purple
-                          Color(0xFFEC4899), // Pink
-                          Color(0xFF00E5FF), // Cyan
+                      child: _SingleBottleWidget(
+                        width: 48,
+                        height: 138,
+                        tiltAngle: tiltLeft,
+                        wavePhase: t,
+                        liquidColors: const [
+                          Color(0xFFFF4DA6), // Layer 1 (Bottom): Pink #FF4DA6
+                          Color(0xFF7655D9), // Layer 2: Purple #7655D9
+                          Color(0xFF087ECA), // Layer 3: Blue #087ECA
+                          Color(0xFF38D9FF), // Layer 4 (Top): Cyan #38D9FF
                         ],
                       ),
                     ),
@@ -112,20 +120,22 @@ class _AnimatedBottlesWidgetState extends State<AnimatedBottlesWidget>
 
                   const SizedBox(width: 14),
 
-                  // Middle Bottle: Slightly taller, stands proud, 4 layers: Green, Yellow, Purple, Aqua
+                  // Middle Bottle (Hero): Elevated, 4 layers: Bottom Cyan #38D9FF, Mint #06D6A0, Orange #FF6B4A, Top Gold #FFD166
                   Transform.translate(
-                    offset: Offset(0, -6 + floatCenter),
+                    offset: Offset(0, -12 + floatCenter),
                     child: Transform.rotate(
                       angle: tiltCenter,
-                      child: const _SingleBottleWidget(
-                        width: 52,
-                        height: 155,
+                      child: _SingleBottleWidget(
+                        width: 54,
+                        height: 160,
                         isCenter: true,
-                        liquidColors: [
-                          Color(0xFF10B981), // Green
-                          Color(0xFFFBBF24), // Yellow
-                          Color(0xFF9333EA), // Purple
-                          Color(0xFF38D9FF), // Cyan/Aqua
+                        tiltAngle: tiltCenter,
+                        wavePhase: t + 1.2,
+                        liquidColors: const [
+                          Color(0xFF38D9FF), // Layer 1 (Bottom): Cyan #38D9FF
+                          Color(0xFF06D6A0), // Layer 2: Mint #06D6A0
+                          Color(0xFFFF6B4A), // Layer 3: Coral #FF6B4A
+                          Color(0xFFFFD166), // Layer 4 (Top): Gold #FFD166
                         ],
                       ),
                     ),
@@ -133,19 +143,21 @@ class _AnimatedBottlesWidgetState extends State<AnimatedBottlesWidget>
 
                   const SizedBox(width: 14),
 
-                  // Right Bottle: Tilted slightly right, 4 layers: Pink, Green, Yellow, Blue
+                  // Right Bottle: Tilted +9deg, 4 layers: Bottom Purple #7655D9, Mint #06D6A0, Pink #FF4DA6, Top Blue #087ECA
                   Transform.translate(
-                    offset: Offset(0, floatRight),
+                    offset: Offset(0, -6 + floatRight),
                     child: Transform.rotate(
                       angle: tiltRight,
-                      child: const _SingleBottleWidget(
-                        width: 46,
-                        height: 132,
-                        liquidColors: [
-                          Color(0xFFF43F5E), // Pink
-                          Color(0xFF059669), // Green
-                          Color(0xFFF59E0B), // Yellow
-                          Color(0xFF0284C7), // Blue
+                      child: _SingleBottleWidget(
+                        width: 48,
+                        height: 138,
+                        tiltAngle: tiltRight,
+                        wavePhase: t + 2.4,
+                        liquidColors: const [
+                          Color(0xFF7655D9), // Layer 1 (Bottom): Purple #7655D9
+                          Color(0xFF06D6A0), // Layer 2: Mint #06D6A0
+                          Color(0xFFFF4DA6), // Layer 3: Pink #FF4DA6
+                          Color(0xFF087ECA), // Layer 4 (Top): Blue #087ECA
                         ],
                       ),
                     ),
@@ -165,12 +177,16 @@ class _SingleBottleWidget extends StatelessWidget {
   final double height;
   final List<Color> liquidColors;
   final bool isCenter;
+  final double tiltAngle;
+  final double wavePhase;
 
   const _SingleBottleWidget({
     required this.width,
     required this.height,
     required this.liquidColors,
     this.isCenter = false,
+    this.tiltAngle = 0.0,
+    this.wavePhase = 0.0,
   });
 
   @override
@@ -180,6 +196,8 @@ class _SingleBottleWidget extends StatelessWidget {
       painter: _BottlePainter(
         liquidColors: liquidColors,
         isCenter: isCenter,
+        tiltAngle: tiltAngle,
+        wavePhase: wavePhase,
       ),
     );
   }
@@ -188,10 +206,14 @@ class _SingleBottleWidget extends StatelessWidget {
 class _BottlePainter extends CustomPainter {
   final List<Color> liquidColors;
   final bool isCenter;
+  final double tiltAngle;
+  final double wavePhase;
 
   _BottlePainter({
     required this.liquidColors,
     this.isCenter = false,
+    this.tiltAngle = 0.0,
+    this.wavePhase = 0.0,
   });
 
   @override
@@ -205,90 +227,228 @@ class _BottlePainter extends CustomPainter {
     final double neckHeight = 9.0;
     final double neckWidth = w * 0.68;
     final double bodyTop = neckTop + neckHeight;
-    final double bodyHeight = h - bodyTop;
     final double baseRadius = w * 0.44;
 
-    // 1. Draw Glass Cavity Path (for clipping the liquid)
+    // Realistic glass wall thickness
+    final double innerLeft = 1.6;
+    final double innerRight = w - 1.6;
+    final double bottomY = h - 2.0;
+    final double innerBaseRadius = baseRadius - 1.6;
+    final double innerNeckWidth = neckWidth - 2.4;
+    final double topCavityY = bodyTop + 6.0;
+
+    // 1. Draw Glass Cavity Path (for clipping liquid smoothly inside)
     final Path cavityPath = Path();
-    cavityPath.moveTo((w - neckWidth) / 2 + 1.5, bodyTop);
-    cavityPath.lineTo(1.5, bodyTop + 8.0);
-    cavityPath.lineTo(1.5, h - baseRadius);
+    cavityPath.moveTo((w - innerNeckWidth) / 2, neckTop);
+    cavityPath.lineTo((w - innerNeckWidth) / 2, bodyTop + 1.0);
+    cavityPath.quadraticBezierTo(
+      innerLeft,
+      bodyTop + 3.0,
+      innerLeft,
+      topCavityY,
+    );
+    cavityPath.lineTo(innerLeft, h - baseRadius);
     cavityPath.arcToPoint(
-      Offset(w - 1.5, h - baseRadius),
-      radius: Radius.circular(baseRadius),
+      Offset(innerRight, h - baseRadius),
+      radius: Radius.circular(innerBaseRadius),
       clockwise: false,
     );
-    cavityPath.lineTo(w - 1.5, bodyTop + 8.0);
-    cavityPath.lineTo((w + neckWidth) / 2 - 1.5, bodyTop);
+    cavityPath.lineTo(innerRight, topCavityY);
+    cavityPath.quadraticBezierTo(
+      innerRight,
+      bodyTop + 3.0,
+      (w + innerNeckWidth) / 2,
+      bodyTop + 1.0,
+    );
+    cavityPath.lineTo((w + innerNeckWidth) / 2, neckTop);
     cavityPath.close();
 
-    // 2. Draw Translucent Glass Backing
+    // 2. Translucent Glass Backing
     final Paint glassBackingPaint = Paint()
-      ..color = const Color(0xFF142B4C).withValues(alpha: 0.35)
+      ..color = const Color(0xFF0F1E36).withValues(alpha: 0.16)
       ..style = PaintingStyle.fill;
     canvas.drawPath(cavityPath, glassBackingPaint);
 
-    // 3. Draw Liquid Layers (clipped inside bottle)
+    // 3. Liquid Layers (drawn as organic fluid volumes with smooth meniscus curves)
     canvas.save();
     canvas.clipPath(cavityPath);
 
     final int layerCount = liquidColors.length;
-    final double liquidTotalHeight = bodyHeight - 4.0;
-    final double layerHeight = liquidTotalHeight / layerCount;
-    final double liquidStartTop = bodyTop + 8.0;
+    if (layerCount > 0) {
+      final double liquidTotalHeight = bottomY - topCavityY;
+      final double layerHeight = liquidTotalHeight / layerCount;
+      const int steps = 28;
+      final double dx = (innerRight - innerLeft) / steps;
+      final double cx = (innerLeft + innerRight) / 2;
+      final double slope = -math.tan(tiltAngle.clamp(-0.85, 0.85));
 
-    for (int i = 0; i < layerCount; i++) {
-      // index 0 is bottom, index layerCount - 1 is top
-      final Color color = liquidColors[i];
-      final double top = h - (i + 1) * layerHeight;
-      final Rect layerRect = Rect.fromLTWH(0, top, w, layerHeight + 0.8);
+      List<Offset> computeSurfacePoints(int layerIndex) {
+        final List<Offset> points = [];
+        final double yBase = bottomY - (layerIndex + 1) * layerHeight;
+        final bool isTopmost = layerIndex == layerCount - 1;
+        final double amp = isTopmost ? 1.2 : 0.5;
+        final double curv = isTopmost ? 1.5 : 0.9;
 
-      final Paint layerPaint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.95),
-            color,
-            color.withValues(alpha: 0.82),
-          ],
-        ).createShader(layerRect);
+        for (int s = 0; s <= steps; s++) {
+          final double x = innerLeft + s * dx;
+          final double u = s / steps;
+          final double tiltDy = (x - cx) * slope;
+          final double waveDy =
+              math.sin(u * math.pi * 2 + wavePhase + layerIndex * 0.45) * amp;
+          final double meniscusDy = curv * (1.0 - 4.0 * (u - 0.5) * (u - 0.5));
+          final double y = (yBase + tiltDy + waveDy + meniscusDy).clamp(
+            bodyTop + 4.0,
+            h + 4.0,
+          );
+          points.add(Offset(x, y));
+        }
+        return points;
+      }
 
-      canvas.drawRect(layerRect, layerPaint);
+      List<Offset>? previousTopPoints;
 
-      // Layer surface meniscus / separator line
-      if (i < layerCount - 1) {
-        final Paint dividerPaint = Paint()
-          ..color = Colors.white.withValues(alpha: 0.28)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2;
+      for (int i = 0; i < layerCount; i++) {
+        final Color color = liquidColors[i];
+        final bool isTopmost = i == layerCount - 1;
+        final topPoints = computeSurfacePoints(i);
 
-        final Path wavePath = Path();
-        wavePath.moveTo(0, top);
-        wavePath.quadraticBezierTo(w * 0.5, top - 1.2, w, top);
-        canvas.drawPath(wavePath, dividerPaint);
-      } else {
-        // Top meniscus of highest liquid layer
-        final Paint meniscusPaint = Paint()
-          ..color = Colors.white.withValues(alpha: 0.45)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5;
+        final Path layerPath = Path();
+        if (i == 0) {
+          // Bottom-most layer fills completely down to the inner bottom of the bottle
+          layerPath.moveTo(topPoints.first.dx, topPoints.first.dy);
+          for (final pt in topPoints) {
+            layerPath.lineTo(pt.dx, pt.dy);
+          }
+          layerPath.lineTo(w + 10.0, h + 10.0);
+          layerPath.lineTo(-10.0, h + 10.0);
+          layerPath.close();
+        } else {
+          // Upper layers nest seamlessly on top of layer below
+          layerPath.moveTo(topPoints.first.dx, topPoints.first.dy);
+          for (final pt in topPoints) {
+            layerPath.lineTo(pt.dx, pt.dy);
+          }
+          layerPath.lineTo(
+            previousTopPoints!.last.dx,
+            previousTopPoints.last.dy,
+          );
+          for (final pt in previousTopPoints.reversed) {
+            layerPath.lineTo(pt.dx, pt.dy);
+          }
+          layerPath.close();
+        }
 
-        final Path wavePath = Path();
-        wavePath.moveTo(0, top);
-        wavePath.quadraticBezierTo(w * 0.5, top - 2.0, w, top);
-        canvas.drawPath(wavePath, meniscusPaint);
+        // 1. Multi-stop vertical liquid shader
+        final double segTopY = bottomY - (i + 1) * layerHeight;
+        final double segBotY = i == 0 ? h : bottomY - i * layerHeight;
+        final Rect layerRect = Rect.fromLTRB(
+          0,
+          segTopY - 10.0,
+          w,
+          segBotY + 10.0,
+        );
+
+        final Paint layerPaint = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withValues(alpha: 0.90),
+              color.withValues(alpha: 0.98),
+              Color.lerp(color, const Color(0xFF030D1A), 0.28)!,
+            ],
+            stops: const [0.0, 0.42, 1.0],
+          ).createShader(layerRect);
+
+        canvas.drawPath(layerPath, layerPaint);
+
+        // 2. Horizontal cylindrical 3D lighting
+        final Paint cylinderShade = Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.black.withValues(alpha: 0.18),
+              Colors.white.withValues(alpha: 0.16),
+              Colors.white.withValues(alpha: 0.04),
+              Colors.black.withValues(alpha: 0.22),
+            ],
+            stops: const [0.0, 0.28, 0.65, 1.0],
+          ).createShader(Rect.fromLTWH(0, 0, w, h));
+
+        canvas.drawPath(layerPath, cylinderShade);
+
+        // Fluid boundary between adjacent layers
+        if (i > 0 && previousTopPoints != null) {
+          final Path interPath = Path();
+          interPath.moveTo(
+            previousTopPoints.first.dx,
+            previousTopPoints.first.dy,
+          );
+          for (final pt in previousTopPoints) {
+            interPath.lineTo(pt.dx, pt.dy);
+          }
+
+          final Paint dividerPaint = Paint()
+            ..color = Colors.white.withValues(alpha: 0.24)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.0;
+          canvas.drawPath(interPath, dividerPaint);
+
+          final Paint shadowPaint = Paint()
+            ..color = Colors.black.withValues(alpha: 0.12)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.7;
+          canvas.drawPath(interPath, shadowPaint);
+        }
+
+        // Topmost liquid meniscus surface crest
+        if (isTopmost) {
+          final Path surfacePath = Path();
+          surfacePath.moveTo(topPoints.first.dx, topPoints.first.dy);
+          for (final pt in topPoints) {
+            surfacePath.lineTo(pt.dx, pt.dy);
+          }
+
+          final Paint surfGlow = Paint()
+            ..color = color.withValues(alpha: 0.30)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.8
+            ..strokeCap = StrokeCap.round;
+          canvas.drawPath(surfacePath, surfGlow);
+
+          final Paint surfCrest = Paint()
+            ..color = Colors.white.withValues(alpha: 0.68)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.4
+            ..strokeCap = StrokeCap.round;
+          canvas.drawPath(surfacePath, surfCrest);
+
+          final Paint surfGlint = Paint()
+            ..color = Colors.white.withValues(alpha: 0.90)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8
+            ..strokeCap = StrokeCap.round;
+          canvas.drawPath(surfacePath, surfGlint);
+        }
+
+        previousTopPoints = topPoints;
       }
     }
 
     // Inner liquid specular glow
-    final Rect innerGlowRect = Rect.fromLTWH(2, liquidStartTop, w - 4, liquidTotalHeight);
+    final Rect innerGlowRect = Rect.fromLTWH(
+      innerLeft,
+      topCavityY,
+      innerRight - innerLeft,
+      bottomY - topCavityY,
+    );
     final Paint innerGlowPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Colors.white.withValues(alpha: 0.12),
+          Colors.white.withValues(alpha: 0.08),
           Colors.transparent,
           Colors.black.withValues(alpha: 0.15),
         ],
@@ -297,30 +457,38 @@ class _BottlePainter extends CustomPainter {
 
     canvas.restore();
 
-    // 4. Outer Glass Body Path (with neck and lip)
+    // 4. Subtle outer bottom curve glass reflection
+    final Path bottomGlint = Path();
+    bottomGlint.moveTo(w * 0.22, h - 3.0);
+    bottomGlint.quadraticBezierTo(w * 0.5, h - 1.2, w * 0.78, h - 3.0);
+    final Paint bottomGlintPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawPath(bottomGlint, bottomGlintPaint);
+
+    // 5. Outer Glass Body Path (with neck and lip)
     final Path bottleOutline = Path();
-    // Neck left
     bottleOutline.moveTo((w - neckWidth) / 2, neckTop);
     bottleOutline.lineTo((w - neckWidth) / 2, bodyTop);
-    // Shoulder left
     bottleOutline.quadraticBezierTo(0, bodyTop + 2, 0, bodyTop + 9);
-    // Body left
     bottleOutline.lineTo(0, h - baseRadius);
-    // Rounded Bottom
     bottleOutline.arcToPoint(
       Offset(w, h - baseRadius),
       radius: Radius.circular(baseRadius),
       clockwise: false,
     );
-    // Body right
     bottleOutline.lineTo(w, bodyTop + 9);
-    // Shoulder right
-    bottleOutline.quadraticBezierTo(w, bodyTop + 2, (w + neckWidth) / 2, bodyTop);
-    // Neck right
+    bottleOutline.quadraticBezierTo(
+      w,
+      bodyTop + 2,
+      (w + neckWidth) / 2,
+      bodyTop,
+    );
     bottleOutline.lineTo((w + neckWidth) / 2, neckTop);
     bottleOutline.close();
 
-    // 5. Draw Glass Outer Stroke with Aqua Shimmer
+    // 6. Draw Glass Outer Stroke with Aqua Shimmer
     final Paint outlinePaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
@@ -337,7 +505,7 @@ class _BottlePainter extends CustomPainter {
 
     canvas.drawPath(bottleOutline, outlinePaint);
 
-    // 6. Draw Top Glass Lip (Rounded pill)
+    // 7. Draw Top Glass Lip (Rounded pill)
     final RRect lipRRect = RRect.fromRectAndRadius(
       Rect.fromCenter(
         center: Offset(w / 2, lipHeight / 2),
@@ -364,15 +532,42 @@ class _BottlePainter extends CustomPainter {
       ..strokeWidth = 1.6;
     canvas.drawRRect(lipRRect, lipStroke);
 
-    // 7. Glass Specular Highlights (Left-side reflection streak)
+    // Top rim highlight on the lip
+    final Path lipTopHighlight = Path();
+    lipTopHighlight.moveTo(w * 0.15, lipHeight * 0.25);
+    lipTopHighlight.lineTo(w * 0.85, lipHeight * 0.25);
+    final Paint lipTopPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.70)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(lipTopHighlight, lipTopPaint);
+
+    // 8. Glass Specular Highlights (Left-side reflection streak)
     final Path leftGlint = Path();
-    leftGlint.moveTo(w * 0.16, bodyTop + 12);
-    leftGlint.lineTo(w * 0.16, h - baseRadius * 1.1);
+    leftGlint.moveTo(w * 0.15, bodyTop + 10);
+    leftGlint.lineTo(w * 0.15, h - baseRadius * 1.15);
 
     final Paint glintPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.38)
+      ..shader =
+          LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white.withValues(alpha: 0.45),
+              Colors.white.withValues(alpha: 0.32),
+              Colors.white.withValues(alpha: 0.10),
+            ],
+          ).createShader(
+            Rect.fromLTWH(
+              0,
+              bodyTop + 10,
+              w,
+              h - baseRadius * 1.15 - (bodyTop + 10),
+            ),
+          )
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
+      ..strokeWidth = 1.8
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(leftGlint, glintPaint);
 
@@ -384,22 +579,25 @@ class _BottlePainter extends CustomPainter {
     final Paint secGlintPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
+      ..strokeWidth = 1.1
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(secondaryGlint, secGlintPaint);
 
-    // Bottom curve specular glint
-    final Path bottomCurveGlint = Path();
-    bottomCurveGlint.arcToPoint(
-      Offset(w * 0.75, h - 3.5),
-      radius: Radius.circular(baseRadius * 0.8),
-      clockwise: false,
-    );
+    // Right rim Fresnel reflection
+    final Path rightRimGlint = Path();
+    rightRimGlint.moveTo(w * 0.86, bodyTop + 10);
+    rightRimGlint.lineTo(w * 0.86, h - baseRadius * 1.1);
+
+    final Paint rightRimPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.16)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(rightRimGlint, rightRimPaint);
   }
 
   @override
-  bool shouldRepaint(covariant _BottlePainter oldDelegate) =>
-      oldDelegate.isCenter != isCenter || oldDelegate.liquidColors != liquidColors;
+  bool shouldRepaint(covariant _BottlePainter oldDelegate) => true;
 }
 
 class _BottleBubblePainter extends CustomPainter {
@@ -429,13 +627,19 @@ class _BottleBubblePainter extends CustomPainter {
       final double radius = b['radius'] as double;
 
       final double currentY = ((yBase - progress * speed) % 1.0) * h;
-      final double currentX = (b['x'] as double) * w + math.sin(progress * 2 * math.pi + speed) * drift;
+      final double currentX =
+          (b['x'] as double) * w +
+          math.sin(progress * 2 * math.pi + speed) * drift;
 
       bubblePaint.color = AppTheme.aquaGlow.withValues(alpha: 0.35);
       canvas.drawCircle(Offset(currentX, currentY), radius, bubblePaint);
 
       bubblePaint.color = Colors.white.withValues(alpha: 0.5);
-      canvas.drawCircle(Offset(currentX - radius * 0.3, currentY - radius * 0.3), radius * 0.35, bubblePaint);
+      canvas.drawCircle(
+        Offset(currentX - radius * 0.3, currentY - radius * 0.3),
+        radius * 0.35,
+        bubblePaint,
+      );
     }
   }
 

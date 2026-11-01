@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 import '../models/theme_model.dart';
 import '../models/bottle_model.dart';
@@ -30,56 +31,56 @@ class _StatsScreenState extends State<StatsScreen> {
     if (mounted) setState(() {});
   }
 
-  String _getPlayerRank(int level) {
-    if (level < 3) return 'Novice Sorter';
-    if (level < 7) return 'Liquid Alchemist';
-    if (level < 12) return 'Aqua Sorcerer';
-    if (level < 20) return 'Fluid Maestro';
-    return 'Grand Hydromancer';
-  }
-
-  int _calculateTotalStars() {
-    int total = 0;
-    for (final level in _gameService.completedLevels) {
-      final stars = _gameService.getStarsForLevel(level);
-      total += (stars == 0 ? 3 : stars);
-    }
-    return total;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final activeTheme = _gameService.currentTheme;
-    final totalStars = _calculateTotalStars();
-    final rank = _getPlayerRank(_gameService.currentLevel);
-
     return Scaffold(
+      backgroundColor: AppTheme.surface,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: activeTheme.backgroundColors,
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.radialCanvas),
         child: SafeArea(
           child: Column(
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppTheme.iceWhite,
-                        size: 20,
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceContainerHigh.withValues(
+                          alpha: 0.70,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFDDD0F7),
+                          width: 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6D28D9)
+                                .withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      tooltip: 'Back to Home',
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: AppTheme.primaryFixed,
+                          size: 20,
+                        ),
+                        tooltip: 'Back to Home',
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Container(
@@ -87,7 +88,9 @@ class _StatsScreenState extends State<StatsScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFB703).withValues(alpha: 0.2),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFFFB703).withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: const Color(0xFFFFB703).withValues(alpha: 0.4),
+                        ),
                       ),
                       child: const Icon(
                         Icons.insights_rounded,
@@ -112,7 +115,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           'Your game record',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Color(0x99EAF7FF),
+                            color: Color(0xFF6B5B85),
                           ),
                         ),
                       ],
@@ -122,185 +125,225 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
 
               // Scrollable Stats Body
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  children: [
-                    // Rank & Progression Hero Card
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF0F325E),
-                            Color(0xFF0A2242),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: AppTheme.aquaGlow.withValues(alpha: 0.4)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.aquaGlow.withValues(alpha: 0.15),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 62,
-                            height: 62,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFFB703), Color(0xFFFB8500)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFFB703).withValues(alpha: 0.3),
-                                  blurRadius: 16,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.emoji_events_rounded,
-                              color: Colors.white,
-                              size: 34,
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  rank,
-                                  style: const TextStyle(
-                                    color: AppTheme.iceWhite,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Level ${_gameService.currentLevel} Explorer',
-                                  style: const TextStyle(
-                                    color: AppTheme.aquaGlow,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.star_rounded, color: Color(0xFFFFB703), size: 16),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '$totalStars Stars Earned',
-                                      style: TextStyle(
-                                        color: AppTheme.iceWhite.withValues(alpha: 0.8),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Grid of 4 Core Stats
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      childAspectRatio: 1.35,
-                      children: [
-                        _buildStatBox(
-                          icon: Icons.check_circle_outline_rounded,
-                          label: 'Completed',
-                          value: '${_gameService.completedLevelsCount}',
-                          color: const Color(0xFF00E676),
-                        ),
-                        _buildStatBox(
-                          icon: Icons.swap_vert_rounded,
-                          label: 'Total Moves',
-                          value: '${_gameService.totalMoves}',
-                          color: AppTheme.aquaGlow,
-                        ),
-                        _buildStatBox(
-                          icon: Icons.whatshot_rounded,
-                          label: 'Best Streak',
-                          value: '${_gameService.bestStreak}',
-                          color: const Color(0xFFFF7A00),
-                        ),
-                        _buildStatBox(
-                          icon: Icons.games_rounded,
-                          label: 'Games Played',
-                          value: '${_gameService.gamesPlayed}',
-                          color: const Color(0xFFA78BFA),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Collections Summary
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0C1F38).withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppTheme.glassBorder),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Collection Unlocked',
-                            style: TextStyle(
-                              color: AppTheme.iceWhite,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _buildCollectionProgress(
-                            label: 'Visual Themes',
-                            current: _gameService.unlockedThemeIds.length,
-                            total: GameTheme.allThemes.length,
-                            color: const Color(0xFF9D4EDD),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildCollectionProgress(
-                            label: 'Bottle Styles',
-                            current: _gameService.unlockedBottleIds.length,
-                            total: BottleStyle.allBottles.length,
-                            color: AppTheme.aquaGlow,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
+              const Expanded(child: StatsContentView()),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class StatsContentView extends StatelessWidget {
+  final EdgeInsetsGeometry padding;
+
+  const StatsContentView({
+    super.key,
+    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+  });
+
+  String _getPlayerRank(int level) {
+    if (level < 3) return 'Novice Sorter';
+    if (level < 7) return 'Liquid Alchemist';
+    if (level < 12) return 'Aqua Sorcerer';
+    if (level < 20) return 'Fluid Maestro';
+    return 'Grand Hydromancer';
+  }
+
+  int _calculateTotalStars(GameService gameService) {
+    int total = 0;
+    for (final level in gameService.completedLevels) {
+      final stars = gameService.getStarsForLevel(level);
+      total += (stars == 0 ? 3 : stars);
+    }
+    return total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gameService = GameService.instance;
+
+    return ListenableBuilder(
+      listenable: gameService,
+      builder: (context, _) {
+        final totalStars = _calculateTotalStars(gameService);
+        final rank = _getPlayerRank(gameService.currentLevel);
+
+        return ListView(
+          padding: padding,
+          children: [
+            // Rank & Progression Hero Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFEDE5FF), Color(0xFFF7F3FF)],
+                ),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFDDD0F7)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6D28D9).withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFB703), Color(0xFFFB8500)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFB703).withValues(alpha: 0.3),
+                          blurRadius: 16,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.emoji_events_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          rank,
+                          style: const TextStyle(
+                            color: AppTheme.iceWhite,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Level ${gameService.currentLevel} Explorer',
+                          style: const TextStyle(
+                            color: AppTheme.aquaGlow,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              color: Color(0xFFFFB703),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$totalStars Stars Earned',
+                              style: TextStyle(
+                                color: AppTheme.iceWhite.withValues(alpha: 0.8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Grid of 4 Core Stats
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 1.35,
+              children: [
+                _buildStatBox(
+                  icon: Icons.check_circle_outline_rounded,
+                  label: 'Completed',
+                  value: '${gameService.completedLevelsCount}',
+                  color: const Color(0xFF00E676),
+                ),
+                _buildStatBox(
+                  icon: Icons.swap_vert_rounded,
+                  label: 'Total Moves',
+                  value: '${gameService.totalMoves}',
+                  color: AppTheme.aquaGlow,
+                ),
+                _buildStatBox(
+                  icon: Icons.whatshot_rounded,
+                  label: 'Best Streak',
+                  value: '${gameService.bestStreak}',
+                  color: const Color(0xFFFF7A00),
+                ),
+                _buildStatBox(
+                  icon: Icons.games_rounded,
+                  label: 'Games Played',
+                  value: '${gameService.gamesPlayed}',
+                  color: const Color(0xFFA78BFA),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 18),
+
+            // Collections Summary
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.glassBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Collection Unlocked',
+                    style: TextStyle(
+                      color: AppTheme.iceWhite,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildCollectionProgress(
+                    label: 'Visual Themes',
+                    current: gameService.unlockedThemeIds.length,
+                    total: GameTheme.allThemes.length,
+                    color: const Color(0xFF9D4EDD),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCollectionProgress(
+                    label: 'Bottle Styles',
+                    current: gameService.unlockedBottleIds.length,
+                    total: BottleStyle.allBottles.length,
+                    color: AppTheme.aquaGlow,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+          ],
+        );
+      },
     );
   }
 
@@ -313,7 +356,7 @@ class _StatsScreenState extends State<StatsScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1F38).withValues(alpha: 0.75),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppTheme.glassBorder),
       ),
@@ -329,7 +372,7 @@ class _StatsScreenState extends State<StatsScreen> {
                 child: Text(
                   label,
                   style: const TextStyle(
-                    color: Color(0x99EAF7FF),
+                    color: Color(0xFF6B5B85),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -390,7 +433,7 @@ class _StatsScreenState extends State<StatsScreen> {
           child: LinearProgressIndicator(
             value: ratio,
             minHeight: 6,
-            backgroundColor: Colors.white.withValues(alpha: 0.08),
+            backgroundColor: const Color(0xFFEDE5FF),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),

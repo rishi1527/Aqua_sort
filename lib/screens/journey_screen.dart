@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 import '../services/game_service.dart';
 import '../main.dart';
@@ -33,16 +34,16 @@ class _JourneyScreenState extends State<JourneyScreen> {
     if (_gameService.isLevelUnlocked(level)) {
       _gameService.recordGameStarted();
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WaterSortScreen(initialLevel: level),
-        ),
+        MaterialPageRoute(builder: (_) => WaterSortScreen(initialLevel: level)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Complete Level ${level - 1} first to unlock Level $level!'),
+          content: Text(
+            'Complete Level ${level - 1} first to unlock Level $level!',
+          ),
           duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF1E293B),
+          backgroundColor: AppTheme.primaryPurple,
         ),
       );
     }
@@ -50,47 +51,66 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activeTheme = _gameService.currentTheme;
-
     return Scaffold(
+      backgroundColor: AppTheme.surface,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: activeTheme.backgroundColors,
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.radialCanvas),
         child: SafeArea(
           child: Column(
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppTheme.iceWhite,
-                        size: 20,
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceContainerHigh.withValues(
+                          alpha: 0.70,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFDDD0F7),
+                          width: 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6D28D9)
+                                .withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      tooltip: 'Back to Home',
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: AppTheme.primaryFixed,
+                          size: 20,
+                        ),
+                        tooltip: 'Back to Home',
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.2),
+                        color: const Color(0xFFEDE5FF),
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.aquaGlow.withValues(alpha: 0.4)),
+                        border: Border.all(color: const Color(0xFFDDD0F7)),
                       ),
                       child: const Icon(
                         Icons.explore_rounded,
-                        color: AppTheme.aquaGlow,
+                        color: Color(0xFF6D28D9),
                         size: 20,
                       ),
                     ),
@@ -112,7 +132,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                             'Explore your progress',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0x99EAF7FF),
+                              color: Color(0xFF6B5B85),
                             ),
                           ),
                         ],
@@ -120,7 +140,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
                     ),
                     // Current Level Pill
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.deepNavy.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(16),
@@ -129,7 +152,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star_rounded, color: Color(0xFFFFB703), size: 16),
+                          const Icon(
+                            Icons.star_rounded,
+                            color: Color(0xFFFFB703),
+                            size: 16,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Level ${_gameService.currentLevel}',
@@ -149,17 +176,34 @@ class _JourneyScreenState extends State<JourneyScreen> {
               // Level Chapters & Grid
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   children: [
                     _buildChapterSection('Chapter 1: Tranquil Waters', 1, 10),
                     const SizedBox(height: 20),
                     _buildChapterSection('Chapter 2: Coral Lagoon', 11, 20),
                     const SizedBox(height: 20),
-                    _buildChapterSection('Chapter 3: Bioluminescent Abyss', 21, 30),
+                    _buildChapterSection(
+                      'Chapter 3: Bioluminescent Abyss',
+                      21,
+                      30,
+                    ),
                     const SizedBox(height: 20),
                     _buildChapterSection('Chapter 4: Crystal Fjord', 31, 40),
                     const SizedBox(height: 20),
                     _buildChapterSection('Chapter 5: Celestial Tide', 41, 50),
+                    const SizedBox(height: 20),
+                    _buildChapterSection('Chapter 6: Mystic Caverns', 51, 60),
+                    const SizedBox(height: 20),
+                    _buildChapterSection('Chapter 7: Aurora Springs', 61, 70),
+                    const SizedBox(height: 20),
+                    _buildChapterSection('Chapter 8: Prismatic Reef', 71, 80),
+                    const SizedBox(height: 20),
+                    _buildChapterSection('Chapter 9: Starlight Falls', 81, 90),
+                    const SizedBox(height: 20),
+                    _buildChapterSection('Chapter 10: Infinity Ocean', 91, 100),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -175,7 +219,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0C1F38).withValues(alpha: 0.72),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.glassBorder),
       ),
@@ -185,15 +229,20 @@ class _JourneyScreenState extends State<JourneyScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppTheme.iceWhite,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.iceWhite,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 'Lv $startLevel - $endLevel',
                 style: TextStyle(
@@ -219,10 +268,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
               final levelNum = startLevel + index;
               final isUnlocked = _gameService.isLevelUnlocked(levelNum);
               final isCurrent = _gameService.currentLevel == levelNum;
-              final isCompleted = _gameService.completedLevels.contains(levelNum);
+              final isCompleted = _gameService.completedLevels.contains(
+                levelNum,
+              );
               final stars = _gameService.getStarsForLevel(levelNum);
 
-              return _buildLevelNode(levelNum, isUnlocked, isCurrent, isCompleted, stars);
+              return _buildLevelNode(
+                levelNum,
+                isUnlocked,
+                isCurrent,
+                isCompleted,
+                stars,
+              );
             },
           ),
         ],
@@ -242,15 +299,15 @@ class _JourneyScreenState extends State<JourneyScreen> {
     Widget content;
 
     if (isCompleted) {
-      bg = const Color(0xFF0D3E3A);
-      border = Border.all(color: const Color(0xFF00E676), width: 1.5);
+      bg = const Color(0xFFEDE5FF);
+      border = Border.all(color: const Color(0xFF6D28D9), width: 1.5);
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             '$level',
             style: const TextStyle(
-              color: Colors.white,
+              color: Color(0xFF32145A),
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -265,7 +322,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 size: 9,
                 color: i < (stars == 0 ? 3 : stars)
                     ? const Color(0xFFFFB703)
-                    : Colors.white24,
+                    : const Color(0xFFDDD0F7),
               ),
             ),
           ),
@@ -289,8 +346,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
         ],
       );
     } else if (isUnlocked) {
-      bg = const Color(0xFF142C4B);
-      border = Border.all(color: AppTheme.glassBorder);
+      bg = const Color(0xFFF7F3FF);
+      border = Border.all(color: const Color(0xFFDDD0F7));
       content = Center(
         child: Text(
           '$level',
@@ -302,10 +359,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
         ),
       );
     } else {
-      bg = Colors.white.withValues(alpha: 0.04);
-      border = Border.all(color: Colors.white.withValues(alpha: 0.06));
+      bg = const Color(0xFFF7F3FF);
+      border = Border.all(color: const Color(0xFFDDD0F7));
       content = const Center(
-        child: Icon(Icons.lock_rounded, color: Colors.white24, size: 16),
+        child: Icon(Icons.lock_rounded, color: Color(0xFF6B5B85), size: 16),
       );
     }
 

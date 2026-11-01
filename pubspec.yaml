@@ -60,6 +60,27 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/images/themes/
+    - assets/images/themes/simple.png
+    - assets/images/themes/moonlight_lake.png
+    - assets/images/themes/cherry_blossom.png
+    - assets/images/themes/sunset_beach.png
+    - assets/images/themes/sky_realm.png
+    - assets/images/themes/enchanted_forest.png
+    - assets/images/themes/ocean_valley.png
+    - assets/images/themes/alpine_valley.png
+    - assets/images/themes/serenity_garden.png
+    - assets/images/themes/crystal_cave.png
+    - assets/images/themes/dream_twilight.png
+    - assets/images/themes/autumn_harmony.png
+    - assets/images/themes/celestial_valley.png
+    - assets/images/themes/desert_oasis.png
+    - assets/images/themes/night_city.png
+    - assets/images/themes/northern_lights.png
+    - assets/images/themes/spring_meadow.png
+    - assets/images/themes/floating_islands.png
+    - assets/images/themes/mystic_library.png
+    - assets/images/themes/galaxy_space.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
