@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "419053751751",
+    "project_id": "aquasort-2b1b9",
+    "storage_bucket": "aquasort-2b1b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:419053751751:android:f97d09872f016959bddde2",
+        "android_client_info": {
+          "package_name": "com.example.water_sort_game"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8V4alTgMVQAC0AvgfZUoe2Y3yfYcV4dw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

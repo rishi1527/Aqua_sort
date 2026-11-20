@@ -4,6 +4,9 @@ import '../theme/app_theme.dart';
 import '../models/theme_model.dart';
 import '../models/bottle_model.dart';
 import '../services/game_service.dart';
+import '../services/sound_service.dart';
+import '../services/haptic_service.dart';
+import 'leaderboard_screen.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -260,6 +263,100 @@ class StatsContentView extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Global Leaderboard Navigation Card
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('achievements_leaderboard_card'),
+                onTap: () {
+                  SoundService.instance.playButtonTap();
+                  HapticService.instance.selectionClick();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const LeaderboardScreen(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2E0854), Color(0xFF1E0A3C)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFC084FC).withValues(alpha: 0.50),
+                      width: 1.4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF9333EA).withValues(alpha: 0.25),
+                        blurRadius: 16,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFDE047), Color(0xFFF59E0B)],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.emoji_events_rounded,
+                            color: Color(0xFF78350F),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Global Leaderboard',
+                              style: TextStyle(
+                                fontFamily: 'Outfit',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Compete with Top Sorters worldwide',
+                              style: TextStyle(
+                                fontFamily: 'Manrope',
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.75),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Color(0xFF38BDF8),
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -6,7 +7,9 @@ import '../models/theme_model.dart';
 import '../models/bottle_model.dart';
 import '../models/customization_models.dart';
 import 'level_generator.dart';
+import 'rewarded_ad_service.dart';
 import 'storage_stub.dart' if (dart.library.io) 'storage_io.dart';
+import 'leaderboard_service.dart';
 
 class GameService extends ChangeNotifier {
   static final GameService instance = GameService._internal();
@@ -35,27 +38,30 @@ class GameService extends ChangeNotifier {
 
   int _currentLevel = 1;
   final Set<int> _completedLevels = {};
+  final Set<int> _rewardedLevelIds = {};
+  String? _lastDailyClaimDate;
+  DateTime Function() _nowProvider = () => DateTime.now();
+  bool _isClaimingDaily = false;
+  bool _isPurchasing = false;
+
   final Map<int, int> _starsPerLevel = {};
   int _totalMoves = 0;
   int _gamesPlayed = 0;
   int _bestStreak = 0;
   int _currentStreak = 0;
-  int _coins = 1250;
+  int _coins = 0;
+  int _lifetimeEarnedCoins = 0;
+  bool _economyV2MigrationDone = true;
+  Timer? _midnightTimer;
+  bool _autoMidnightTimerEnabled = true;
 
   // 1. Themes
   String _selectedThemeId = 'simple';
-  final Set<String> _unlockedThemeIds = {
-    'purple_white',
-    'ocean_deep',
-    for (final t in GameTheme.allThemes) t.id,
-  };
+  final Set<String> _unlockedThemeIds = {'simple'};
 
   // 2. Bottles / Tubes
   String _selectedBottleId = 'classic_tube';
-  final Set<String> _unlockedBottleIds = {
-    for (final b in BottleStyle.allBottles) b.id,
-    'classic_flask',
-  };
+  final Set<String> _unlockedBottleIds = {'classic_tube', 'classic_flask'};
 
   // 3. Bottle Caps
   String _selectedCapId = 'cap_none';
@@ -85,16 +91,46 @@ class GameService extends ChangeNotifier {
   int get bestStreak => _bestStreak;
   int get currentStreak => _currentStreak;
   int get coins => _coins;
+  int get lifetimeEarnedCoins => _lifetimeEarnedCoins;
+  int getBalance() => _coins;
+  bool get isEconomyV2MigrationDone => _economyV2MigrationDone;
+  Set<int> get rewardedLevelIds => Set.unmodifiable(_rewardedLevelIds);
+  bool isLevelRewarded(int levelId) => _rewardedLevelIds.contains(levelId);
+  String? get lastDailyClaimDate => _lastDailyClaimDate;
 
   // Themes
   String get selectedThemeId => _selectedThemeId;
   GameTheme get currentTheme => GameTheme.getById(_selectedThemeId);
   Set<String> get unlockedThemeIds => Set.unmodifiable(_unlockedThemeIds);
+  Set<String> getOwnedThemes() => Set.unmodifiable(_unlockedThemeIds);
 
   // Bottles
   String get selectedBottleId => _selectedBottleId;
   BottleStyle get currentBottle => BottleStyle.getById(_selectedBottleId);
   Set<String> get unlockedBottleIds => Set.unmodifiable(_unlockedBottleIds);
+  Set<String> getOwnedBottleSkins() => Set.unmodifiable(_unlockedBottleIds);
+
+  bool isThemeOwned(String themeId) {
+    if (themeId == 'simple') return true;
+    return _unlockedThemeIds.contains(themeId);
+  }
+
+  bool isBottleOwned(String bottleId) {
+    if (bottleId == 'classic_tube' || bottleId == 'classic_flask') return true;
+    return _unlockedBottleIds.contains(bottleId);
+  }
+
+  int getThemePrice(String themeId) {
+    if (themeId == 'simple') return 0;
+    final theme = GameTheme.getById(themeId);
+    return theme.coinCost;
+  }
+
+  int getBottlePrice(String bottleId) {
+    if (bottleId == 'classic_tube' || bottleId == 'classic_flask') return 0;
+    final bottle = BottleStyle.getById(bottleId);
+    return bottle.coinCost;
+  }
 
   // Caps
   String get selectedCapId => _selectedCapId;
@@ -226,7 +262,7 @@ class GameService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void completeLevel(int levelNumber, int movesUsed, {int? earnedStars}) {
+  int completeLevel(int levelNumber, int movesUsed, {int? earnedStars}) {
     _completedLevels.add(levelNumber);
     _totalMoves += movesUsed;
 
@@ -262,12 +298,266 @@ class GameService extends ChangeNotifier {
       }
     }
 
-    // Award level completion coins
-    _coins += 50;
+    // Award exactly 50 coins ONLY on first successful completion; 0 on replay
+    int coinsAwarded = 0;
+    if (!_rewardedLevelIds.contains(levelNumber)) {
+      _rewardedLevelIds.add(levelNumber);
+      _coins += 50;
+      _lifetimeEarnedCoins += 50;
+      coinsAwarded = 50;
+
+      try {
+        LeaderboardService.instance.queueLevelCompletion(
+          levelId: levelNumber,
+          movesUsed: movesUsed,
+          stars: stars,
+        );
+      } catch (_) {}
+    }
 
     _checkAutoUnlocks();
     _saveToStorage();
     notifyListeners();
+    return coinsAwarded;
+  }
+
+  /// Claims first-completion reward of 50 coins for a level if not yet claimed.
+  /// Returns 50 if rewarded, 0 if already rewarded or invalid.
+  Future<int> claimLevelCompletionReward(int levelId) async {
+    if (levelId < 1 || levelId > maxLevel) return 0;
+    if (_rewardedLevelIds.contains(levelId)) return 0;
+
+    final prevCoins = _coins;
+    final prevLifetimeCoins = _lifetimeEarnedCoins;
+    _coins += 50;
+    _lifetimeEarnedCoins += 50;
+    _rewardedLevelIds.add(levelId);
+    _completedLevels.add(levelId);
+
+    try {
+      await _saveToStorage();
+      notifyListeners();
+      return 50;
+    } catch (e) {
+      _coins = prevCoins;
+      _lifetimeEarnedCoins = prevLifetimeCoins;
+      _rewardedLevelIds.remove(levelId);
+      return 0;
+    }
+  }
+
+  static String formatCalendarDate(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  bool canClaimDailyReward() {
+    if (_lastDailyClaimDate == null) return true;
+    final todayStr = formatCalendarDate(_nowProvider());
+    // Defensive check: if clock is moved backwards, todayStr <= _lastDailyClaimDate, so cannot claim
+    return todayStr.compareTo(_lastDailyClaimDate!) > 0;
+  }
+
+  void _scheduleMidnightCheck() {
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
+    if (!_autoMidnightTimerEnabled) return;
+
+    final now = _nowProvider();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight =
+        tomorrow.difference(now) + const Duration(milliseconds: 50);
+
+    if (durationUntilMidnight.isNegative) {
+      checkMidnightRefresh();
+      return;
+    }
+
+    _midnightTimer = Timer(durationUntilMidnight, () {
+      checkMidnightRefresh();
+    });
+  }
+
+  /// Refreshes midnight reward availability and notifies listeners in real-time.
+  void checkMidnightRefresh() {
+    _scheduleMidnightCheck();
+    notifyListeners();
+  }
+
+  Future<bool> claimDailyReward() async {
+    if (_isClaimingDaily) return false;
+    if (!canClaimDailyReward()) return false;
+
+    _isClaimingDaily = true;
+    final todayStr = formatCalendarDate(_nowProvider());
+    final prevCoins = _coins;
+    final prevLifetimeCoins = _lifetimeEarnedCoins;
+    final prevDate = _lastDailyClaimDate;
+
+    _coins += 30;
+    _lifetimeEarnedCoins += 30;
+    _lastDailyClaimDate = todayStr;
+
+    try {
+      LeaderboardService.instance.queueDailyReward(
+        calendarDate: todayStr,
+      );
+    } catch (_) {}
+
+    try {
+      await _saveToStorage();
+      _scheduleMidnightCheck();
+      notifyListeners();
+      _isClaimingDaily = false;
+      return true;
+    } catch (e) {
+      _coins = prevCoins;
+      _lifetimeEarnedCoins = prevLifetimeCoins;
+      _lastDailyClaimDate = prevDate;
+      _isClaimingDaily = false;
+      return false;
+    }
+  }
+
+  Future<bool> purchaseTheme(String themeId, {int? customPrice}) async {
+    if (_isPurchasing) return false;
+    if (!GameTheme.allThemes.any((t) => t.id == themeId)) return false;
+    if (themeId == 'simple') return false; // Default theme already owned
+    if (_unlockedThemeIds.contains(themeId)) return false; // Already owned
+
+    final cost = customPrice ?? getThemePrice(themeId);
+    if (_coins < cost) return false;
+
+    _isPurchasing = true;
+    final prevCoins = _coins;
+    _coins -= cost;
+    _unlockedThemeIds.add(themeId);
+
+    try {
+      await _saveToStorage();
+      notifyListeners();
+      _isPurchasing = false;
+      return true;
+    } catch (e) {
+      _coins = prevCoins;
+      _unlockedThemeIds.remove(themeId);
+      _isPurchasing = false;
+      return false;
+    }
+  }
+
+  Future<bool> purchaseBottleSkin(String skinId, {int? customPrice}) async {
+    if (_isPurchasing) return false;
+    if (!BottleStyle.allBottles.any((b) => b.id == skinId)) return false;
+    if (skinId == 'classic_tube' || skinId == 'classic_flask') return false;
+    if (_unlockedBottleIds.contains(skinId)) return false;
+
+    final cost = customPrice ?? getBottlePrice(skinId);
+    if (_coins < cost) return false;
+
+    _isPurchasing = true;
+    final prevCoins = _coins;
+    _coins -= cost;
+    _unlockedBottleIds.add(skinId);
+
+    try {
+      await _saveToStorage();
+      notifyListeners();
+      _isPurchasing = false;
+      return true;
+    } catch (e) {
+      _coins = prevCoins;
+      _unlockedBottleIds.remove(skinId);
+      _isPurchasing = false;
+      return false;
+    }
+  }
+
+  /// Unlocks an eligible unowned theme via rewarded ad verification.
+  /// Deducts 0 coins, updates the shared ownership set, and persists safely.
+  Future<bool> unlockThemeWithAd(String themeId) async {
+    if (_isPurchasing) return false;
+    if (!GameTheme.allThemes.any((t) => t.id == themeId)) return false;
+    if (themeId == 'simple') return false;
+    if (_unlockedThemeIds.contains(themeId)) return false;
+
+    final adService = RewardedAdService.instance;
+    if (!adService.isAdAvailable) return false;
+
+    _isPurchasing = true;
+    try {
+      final result = await adService.showRewardedAd();
+      if (result == RewardedAdResult.rewardEarned) {
+        if (!_unlockedThemeIds.contains(themeId)) {
+          _unlockedThemeIds.add(themeId);
+          await _saveToStorage();
+          notifyListeners();
+          _isPurchasing = false;
+          return true;
+        }
+      }
+      _isPurchasing = false;
+      return false;
+    } catch (e) {
+      _unlockedThemeIds.remove(themeId);
+      _isPurchasing = false;
+      return false;
+    }
+  }
+
+  /// Unlocks an eligible unowned bottle skin via rewarded ad verification.
+  /// Deducts 0 coins, updates the shared ownership set, and persists safely.
+  Future<bool> unlockBottleSkinWithAd(String skinId) async {
+    if (_isPurchasing) return false;
+    if (!BottleStyle.allBottles.any((b) => b.id == skinId)) return false;
+    if (skinId == 'classic_tube' || skinId == 'classic_flask') return false;
+    if (_unlockedBottleIds.contains(skinId)) return false;
+
+    final adService = RewardedAdService.instance;
+    if (!adService.isAdAvailable) return false;
+
+    _isPurchasing = true;
+    try {
+      final result = await adService.showRewardedAd();
+      if (result == RewardedAdResult.rewardEarned) {
+        if (!_unlockedBottleIds.contains(skinId)) {
+          _unlockedBottleIds.add(skinId);
+          await _saveToStorage();
+          notifyListeners();
+          _isPurchasing = false;
+          return true;
+        }
+      }
+      _isPurchasing = false;
+      return false;
+    } catch (e) {
+      _unlockedBottleIds.remove(skinId);
+      _isPurchasing = false;
+      return false;
+    }
+  }
+
+  Future<bool> purchaseHint() async {
+    if (_isPurchasing) return false;
+    const cost = 25;
+    if (_coins < cost) return false;
+
+    _isPurchasing = true;
+    final prevCoins = _coins;
+    _coins -= cost;
+
+    try {
+      await _saveToStorage();
+      notifyListeners();
+      _isPurchasing = false;
+      return true;
+    } catch (e) {
+      _coins = prevCoins;
+      _isPurchasing = false;
+      return false;
+    }
   }
 
   // Economy methods
@@ -285,6 +575,7 @@ class GameService extends ChangeNotifier {
   void addCoins(int amount) {
     if (amount > 0) {
       _coins += amount;
+      _lifetimeEarnedCoins += amount;
       _saveToStorage();
       notifyListeners();
     }
@@ -293,10 +584,7 @@ class GameService extends ChangeNotifier {
   // 1. Theme selection & unlock
   void selectTheme(String themeId) {
     final effectiveThemeId = (themeId == 'royal_castle') ? 'simple' : themeId;
-    if (_unlockedThemeIds.contains(effectiveThemeId) ||
-        GameTheme.allThemes.any((t) => t.id == effectiveThemeId) ||
-        effectiveThemeId == 'purple_white') {
-      _unlockedThemeIds.add(effectiveThemeId);
+    if (isThemeOwned(effectiveThemeId)) {
       _selectedThemeId = effectiveThemeId;
       _saveToStorage();
       notifyListeners();
@@ -304,17 +592,26 @@ class GameService extends ChangeNotifier {
   }
 
   bool unlockThemeWithCoins(String themeId) {
-    _unlockedThemeIds.add(themeId);
-    selectTheme(themeId);
-    return true;
+    final effectiveThemeId = (themeId == 'royal_castle') ? 'simple' : themeId;
+    if (_unlockedThemeIds.contains(effectiveThemeId)) return true;
+    final theme = GameTheme.getById(effectiveThemeId);
+    if (spendCoins(theme.coinCost)) {
+      _unlockedThemeIds.add(effectiveThemeId);
+      _selectedThemeId = effectiveThemeId;
+      _saveToStorage();
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 
   // 2. Bottle selection & unlock
   void selectBottle(String bottleId) {
-    _unlockedBottleIds.add(bottleId);
-    _selectedBottleId = bottleId;
-    _saveToStorage();
-    notifyListeners();
+    if (isBottleOwned(bottleId)) {
+      _selectedBottleId = bottleId;
+      _saveToStorage();
+      notifyListeners();
+    }
   }
 
   bool unlockBottleWithCoins(String bottleId) {
@@ -438,28 +735,27 @@ class GameService extends ChangeNotifier {
     return changed;
   }
 
-  void resetProgress() {
+  void resetProgress({int defaultCoins = 0}) {
     _currentLevel = 1;
     _completedLevels.clear();
+    _rewardedLevelIds.clear();
+    _lastDailyClaimDate = null;
     _starsPerLevel.clear();
     _totalMoves = 0;
     _gamesPlayed = 0;
     _bestStreak = 0;
     _currentStreak = 0;
-    _coins = 1250;
+    _coins = defaultCoins;
+    _lifetimeEarnedCoins = defaultCoins;
+    _economyV2MigrationDone = true;
 
     _selectedThemeId = 'simple';
     _unlockedThemeIds.clear();
-    _unlockedThemeIds.addAll([
-      'purple_white',
-      'ocean_deep',
-      for (final t in GameTheme.allThemes) t.id,
-    ]);
+    _unlockedThemeIds.add('simple');
 
     _selectedBottleId = 'classic_tube';
     _unlockedBottleIds.clear();
-    _unlockedBottleIds.addAll(BottleStyle.allBottles.map((b) => b.id));
-    _unlockedBottleIds.add('classic_flask');
+    _unlockedBottleIds.addAll(['classic_tube', 'classic_flask']);
 
     _selectedCapId = 'cap_none';
     _unlockedCapIds.clear();
@@ -482,15 +778,7 @@ class GameService extends ChangeNotifier {
   }
 
   void _checkAutoUnlocks() {
-    for (final theme in GameTheme.allThemes) {
-      _unlockedThemeIds.add(theme.id);
-    }
-    for (final bottle in BottleStyle.allBottles) {
-      if ((bottle.isFree || !bottle.isAdReward) &&
-          _currentLevel >= bottle.requiredLevel) {
-        _unlockedBottleIds.add(bottle.id);
-      }
-    }
+    // Themes and bottle skins are not unlocked by level; they are acquired via Coin Purchase or Rewarded Ads.
     for (final cap in BottleCapStyle.allCaps) {
       if ((cap.isFree || cap.coinCost == 0) &&
           _currentLevel >= cap.requiredLevel) {
@@ -520,12 +808,16 @@ class GameService extends ChangeNotifier {
     final Map<String, dynamic> data = {
       'currentLevel': _currentLevel,
       'completedLevels': _completedLevels.toList(),
+      'rewardedLevelIds': _rewardedLevelIds.toList(),
+      'lastDailyClaimDate': _lastDailyClaimDate,
       'starsPerLevel': _starsPerLevel.map((k, v) => MapEntry(k.toString(), v)),
       'totalMoves': _totalMoves,
       'gamesPlayed': _gamesPlayed,
       'bestStreak': _bestStreak,
       'currentStreak': _currentStreak,
       'coins': _coins,
+      'lifetimeEarnedCoins': _lifetimeEarnedCoins,
+      'economyV2MigrationDone': _economyV2MigrationDone,
       'selectedThemeId': _selectedThemeId,
       'unlockedThemeIds': _unlockedThemeIds.toList(),
       'selectedBottleId': _selectedBottleId,
@@ -559,6 +851,24 @@ class GameService extends ChangeNotifier {
             _completedLevels.add((item as num).toInt());
           }
         }
+        if (data['rewardedLevelIds'] is List) {
+          _rewardedLevelIds.clear();
+          for (final item in (data['rewardedLevelIds'] as List)) {
+            if (item is num) {
+              _rewardedLevelIds.add(item.toInt());
+            } else if (item is String) {
+              final parsed = int.tryParse(item);
+              if (parsed != null) _rewardedLevelIds.add(parsed);
+            }
+          }
+        } else {
+          // Conservative migration: existing completed levels are marked as rewarded
+          // so existing players do not receive retroactive 50-coin rewards!
+          _rewardedLevelIds.clear();
+          _rewardedLevelIds.addAll(_completedLevels);
+        }
+        _lastDailyClaimDate = data['lastDailyClaimDate'] as String?;
+
         if (data['starsPerLevel'] is Map) {
           _starsPerLevel.clear();
           (data['starsPerLevel'] as Map).forEach((k, v) {
@@ -572,9 +882,45 @@ class GameService extends ChangeNotifier {
         _gamesPlayed = (data['gamesPlayed'] as num?)?.toInt() ?? 0;
         _bestStreak = (data['bestStreak'] as num?)?.toInt() ?? 0;
         _currentStreak = (data['currentStreak'] as num?)?.toInt() ?? 0;
-        _coins = (data['coins'] as num?)?.toInt() ?? 1250;
-
         bool needsSave = false;
+
+        final bool migrationDone =
+            data['economyV2MigrationDone'] as bool? ?? false;
+        if (!migrationDone) {
+          // One-time economy migration: reset existing coin balance to 0
+          _coins = 0;
+          _economyV2MigrationDone = true;
+          needsSave = true;
+        } else {
+          _coins = ((data['coins'] as num?)?.toInt() ?? 0).clamp(0, 999999999);
+          _economyV2MigrationDone = true;
+        }
+
+        if (data.containsKey('lifetimeEarnedCoins') &&
+            data['lifetimeEarnedCoins'] is num) {
+          _lifetimeEarnedCoins = ((data['lifetimeEarnedCoins'] as num).toInt())
+              .clamp(0, 999999999);
+        } else {
+          // One-time backward-compatible migration for existing players:
+          // Approved baseline: max(currentCoins, rewardedLevelIds.length * 50)
+          final int levelCoins = _rewardedLevelIds.length * 50;
+          final int baseline = _coins > levelCoins ? _coins : levelCoins;
+          _lifetimeEarnedCoins = baseline.clamp(0, 999999999);
+          needsSave = true;
+        }
+
+        if (data.containsKey('lifetimeEarnedCoins') &&
+            data['lifetimeEarnedCoins'] is num) {
+          _lifetimeEarnedCoins =
+              ((data['lifetimeEarnedCoins'] as num).toInt()).clamp(0, 999999999);
+        } else {
+          // One-time backward-compatible migration for existing players:
+          // Approved baseline: max(currentCoins, rewardedLevelIds.length * 50)
+          final int levelCoins = _rewardedLevelIds.length * 50;
+          final int baseline = _coins > levelCoins ? _coins : levelCoins;
+          _lifetimeEarnedCoins = baseline.clamp(0, 999999999);
+          needsSave = true;
+        }
         final loadedThemeId = data['selectedThemeId'] as String? ?? 'simple';
         if (loadedThemeId == 'royal_castle') {
           _selectedThemeId = 'simple';
@@ -588,6 +934,7 @@ class GameService extends ChangeNotifier {
           _selectedThemeId = 'simple';
           needsSave = true;
         }
+        _unlockedThemeIds.clear();
         if (data['unlockedThemeIds'] is List) {
           for (final t in (data['unlockedThemeIds'] as List)) {
             final tid = t.toString();
@@ -599,21 +946,20 @@ class GameService extends ChangeNotifier {
           }
         }
         _unlockedThemeIds.remove('royal_castle');
-        _unlockedThemeIds.addAll(['purple_white', 'ocean_deep']);
-        _unlockedThemeIds.addAll(GameTheme.allThemes.map((t) => t.id));
+        _unlockedThemeIds.add('simple');
 
         final loadedBottleId =
             data['selectedBottleId'] as String? ?? 'classic_tube';
         _selectedBottleId = (loadedBottleId == 'classic_flask')
             ? 'classic_tube'
             : loadedBottleId;
+        _unlockedBottleIds.clear();
         if (data['unlockedBottleIds'] is List) {
           for (final b in (data['unlockedBottleIds'] as List)) {
             _unlockedBottleIds.add(b.toString());
           }
         }
-        _unlockedBottleIds.addAll(BottleStyle.allBottles.map((b) => b.id));
-        _unlockedBottleIds.add('classic_flask');
+        _unlockedBottleIds.addAll(['classic_tube', 'classic_flask']);
 
         _selectedCapId = data['selectedCapId'] as String? ?? 'cap_none';
         if (data['unlockedCapIds'] is List) {
@@ -657,10 +1003,100 @@ class GameService extends ChangeNotifier {
         if (needsSave) {
           await _saveToStorage();
         }
+        _scheduleMidnightCheck();
         notifyListeners();
       }
     } catch (_) {
       // Default to initial state on error
     }
   }
+
+  @visibleForTesting
+  void setNowProviderForTesting(DateTime Function() provider) {
+    _nowProvider = provider;
+  }
+
+  @visibleForTesting
+  void resetNowProviderForTesting() {
+    _nowProvider = () => DateTime.now();
+  }
+
+  @visibleForTesting
+  void lockThemeForTesting(String themeId) {
+    if (themeId != 'simple') {
+      _unlockedThemeIds.remove(themeId);
+      notifyListeners();
+    }
+  }
+
+  @visibleForTesting
+  void lockBottleForTesting(String bottleId) {
+    if (bottleId != 'classic_tube' && bottleId != 'classic_flask') {
+      _unlockedBottleIds.remove(bottleId);
+      notifyListeners();
+    }
+  }
+
+  @visibleForTesting
+  void unlockThemeForTesting(String themeId) {
+    _unlockedThemeIds.add(themeId);
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void unlockBottleForTesting(String bottleId) {
+    _unlockedBottleIds.add(bottleId);
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void setCoinsForTesting(int amount) {
+    _coins = amount < 0 ? 0 : amount;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void setLifetimeCoinsForTesting(int amount) {
+    _lifetimeEarnedCoins = amount < 0 ? 0 : amount;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
+    super.dispose();
+  }
+
+  @visibleForTesting
+  void cancelMidnightTimerForTesting() {
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
+  }
+
+  @visibleForTesting
+  void disableMidnightTimerForTesting() {
+    _autoMidnightTimerEnabled = false;
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
+  }
+
+  @visibleForTesting
+  void enableMidnightTimerForTesting() {
+    _autoMidnightTimerEnabled = true;
+    _scheduleMidnightCheck();
+  }
+
+  @visibleForTesting
+  void triggerMidnightForTesting() {
+    checkMidnightRefresh();
+  }
+
+  @visibleForTesting
+  void setEconomyV2MigrationDoneForTesting(bool value) {
+    _economyV2MigrationDone = value;
+  }
+
+  @visibleForTesting
+  Future<void> reloadForTesting() => initialize(forceReload: true);
 }

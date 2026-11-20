@@ -20,10 +20,18 @@ import 'widgets/background_painter.dart';
 import 'models/bottle_model.dart';
 import 'models/customization_models.dart';
 import 'models/theme_model.dart';
+import 'services/firebase_service.dart';
+import 'services/auth_service.dart';
+import 'services/offline_sync_service.dart';
+import 'services/leaderboard_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.initialize();
   await GameService.instance.initialize();
+  await OfflineSyncService.instance.initialize();
+  unawaited(AuthService.instance.initialize());
+  unawaited(LeaderboardService.instance.initialize());
   runApp(const WaterSortApp());
 }
 
@@ -88,6 +96,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
   bool _inExtraTime = false;
   int? _remainingExtraSeconds;
   int _lastEarnedStars = 3;
+  int _lastAwardedCoins = 50;
 
   @visibleForTesting
   int? get initialTimerSecondsForTest => _initialTimerSeconds;
@@ -498,6 +507,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
       _inExtraTime = false;
       _remainingExtraSeconds = null;
       _lastEarnedStars = 3;
+      _lastAwardedCoins = 50;
       _initialTimerSeconds = initialTimer;
       _remainingSeconds = initialTimer;
     });
@@ -744,7 +754,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
           isWon: true,
         );
         _lastEarnedStars = earnedStars;
-        GameService.instance.completeLevel(
+        _lastAwardedCoins = GameService.instance.completeLevel(
           level,
           moves,
           earnedStars: earnedStars,
@@ -969,6 +979,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
       _inExtraTime = false;
       _remainingExtraSeconds = null;
       _lastEarnedStars = 3;
+      _lastAwardedCoins = 50;
       _remainingSeconds = _initialTimerSeconds;
     });
 
@@ -977,31 +988,68 @@ class _WaterSortScreenState extends State<WaterSortScreen>
     }
   }
 
-  void useHint() {
+  Future<void> useHint() async {
     if (won || _isPouring) return;
+
+    // 1. Search for a valid pour move FIRST
+    int? hintFrom;
+    int? hintTo;
+    for (int from = 0; from < tubes.length; from++) {
+      for (int to = 0; to < tubes.length; to++) {
+        if (canPour(from, to)) {
+          hintFrom = from;
+          hintTo = to;
+          break;
+        }
+      }
+      if (hintFrom != null) break;
+    }
+
+    if (hintFrom == null || hintTo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No available moves! Try restarting or adding a tube.'),
+        ),
+      );
+      return; // Do NOT charge when no valid hint is available!
+    }
+
+    // 2. Check balance before deducting
+    if (GameService.instance.coins < 25) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Not enough coins for a hint! (Costs 25 coins)'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return; // Do NOT charge or execute
+    }
+
+    // 3. Purchase hint
+    final success = await GameService.instance.purchaseHint();
+    if (!success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to use hint. Please check your coin balance.',
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
 
     SoundService.instance.playButtonTap();
     HapticService.instance.buttonTap();
 
-    for (int from = 0; from < tubes.length; from++) {
-      for (int to = 0; to < tubes.length; to++) {
-        if (canPour(from, to)) {
-          setState(() {
-            selectedTube = from;
-            hintTarget = to;
-            _queuedSource = null;
-            _queuedDest = null;
-          });
-          return;
-        }
-      }
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No available moves! Try restarting or adding a tube.'),
-      ),
-    );
+    setState(() {
+      selectedTube = hintFrom;
+      hintTarget = hintTo;
+      _queuedSource = null;
+      _queuedDest = null;
+    });
   }
 
   void addExtraTube() {
@@ -1331,10 +1379,44 @@ class _WaterSortScreenState extends State<WaterSortScreen>
             ),
           ),
 
-          // Right Actions: Quick Sound Toggle & Restart Button
+          // Right Actions: Coin Display, Quick Sound Toggle & Restart Button
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ListenableBuilder(
+                listenable: GameService.instance,
+                builder: (context, _) => Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 9),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceContainerHigh.withValues(
+                      alpha: 0.70,
+                    ),
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(
+                      color: const Color(0xFFDDD0F7),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🪙', style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${GameService.instance.coins}',
+                        style: const TextStyle(
+                          fontFamily: 'Outfit',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.iceWhite,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
               Container(
                 width: 36,
                 height: 36,
@@ -2089,7 +2171,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
           ),
           const SizedBox(width: 8),
 
-          // Action 2: Hint (with Free badge)
+          // Action 2: Hint (costs 25 coins)
           Expanded(
             child: controlButton(
               icon: Icons.lightbulb_rounded,
@@ -2097,7 +2179,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
               onTap: useHint,
               enabled: !won && !_isPouring,
               iconColor: AppTheme.tertiaryFixedDim,
-              badgeText: 'Free',
+              badgeText: '25🪙',
               badgeBg: AppTheme.tertiaryContainer,
               badgeFg: AppTheme.onTertiary,
             ),
@@ -2245,6 +2327,7 @@ class _WaterSortScreenState extends State<WaterSortScreen>
       bestStars: currentBest,
       streak: streak,
       maxLevel: GameService.maxLevel,
+      coinsAwarded: _lastAwardedCoins,
       onNextLevel: nextLevel,
       onPlayAgain: restartLevel,
     );

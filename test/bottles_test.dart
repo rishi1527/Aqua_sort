@@ -6,7 +6,12 @@ import 'package:water_sort_game/services/game_service.dart';
 
 void main() {
   setUp(() {
+    GameService.instance.disableMidnightTimerForTesting();
     GameService.instance.resetProgress();
+  });
+
+  tearDown(() {
+    GameService.instance.cancelMidnightTimerForTesting();
   });
 
   group('BottlesScreen 20 Designs & Selection Verification', () {
@@ -36,86 +41,83 @@ void main() {
       },
     );
 
-    testWidgets(
-      'renders cleanly without overflow at 360 logical pixels wide',
-      (WidgetTester tester) async {
-        tester.view.physicalSize = const Size(360, 640);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets('renders cleanly without overflow at 360 logical pixels wide', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-        await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Bottles'), findsOneWidget);
-        expect(find.text('Choose your style'), findsOneWidget);
-        expect(find.text('20 Designs'), findsOneWidget);
-        expect(find.text('Shop'), findsNothing);
-      },
-    );
+      expect(find.text('Bottles'), findsOneWidget);
+      expect(find.text('Choose your style'), findsOneWidget);
+      expect(find.text('20 Designs'), findsOneWidget);
+      expect(find.text('Shop'), findsNothing);
+    });
 
-    testWidgets(
-      'renders cleanly without overflow at 412 logical pixels wide',
-      (WidgetTester tester) async {
-        tester.view.physicalSize = const Size(412, 915);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets('renders cleanly without overflow at 412 logical pixels wide', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-        await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Bottles'), findsOneWidget);
-        expect(find.text('Choose your style'), findsOneWidget);
-        expect(find.text('20 Designs'), findsOneWidget);
-        expect(find.text('Shop'), findsNothing);
-      },
-    );
+      expect(find.text('Bottles'), findsOneWidget);
+      expect(find.text('Choose your style'), findsOneWidget);
+      expect(find.text('20 Designs'), findsOneWidget);
+      expect(find.text('Shop'), findsNothing);
+    });
 
-    testWidgets(
-      'all 20 bottle designs exist and can be scrolled into view',
-      (WidgetTester tester) async {
-        tester.view.physicalSize = const Size(412, 915);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets('all 20 bottle designs exist and can be scrolled into view', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-        await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
+      await tester.pumpAndSettle();
 
-        expect(BottleStyle.allBottles.length, equals(20));
+      expect(BottleStyle.allBottles.length, equals(20));
 
-        final expectedNames = [
-          'Classic Tube',
-          'Conical Flask',
-          'Curvy Bottle',
-          'Square Bottle',
-          'Round Bottle',
-          'Triangle Bottle',
-          'Wave Bottle',
-          'Hexagon Bottle',
-          'Heart Bottle',
-          'Star Bottle',
-          'Spiral Bottle',
-          'Gourd Bottle',
-          'Diamond Bottle',
-          'Ribbed Bottle',
-          'Wave Edge Bottle',
-          'Potion Bottle',
-          'Elegant Bottle',
-          'Drop Bottle',
-          'Cat Bottle',
-          'Moon Bottle',
-        ];
+      final expectedNames = [
+        'Classic Tube',
+        'Conical Flask',
+        'Curvy Bottle',
+        'Square Bottle',
+        'Round Bottle',
+        'Triangle Bottle',
+        'Wave Bottle',
+        'Hexagon Bottle',
+        'Heart Bottle',
+        'Star Bottle',
+        'Spiral Bottle',
+        'Gourd Bottle',
+        'Diamond Bottle',
+        'Ribbed Bottle',
+        'Wave Edge Bottle',
+        'Potion Bottle',
+        'Elegant Bottle',
+        'Drop Bottle',
+        'Cat Bottle',
+        'Moon Bottle',
+      ];
 
-        for (final name in expectedNames) {
-          final itemFinder = find.text(name);
-          await tester.scrollUntilVisible(
-            itemFinder,
-            300.0,
-            scrollable: find.byType(Scrollable),
-          );
-          expect(itemFinder, findsOneWidget);
-        }
-      },
-    );
+      for (final name in expectedNames) {
+        final itemFinder = find.text(name);
+        await tester.scrollUntilVisible(
+          itemFinder,
+          300.0,
+          scrollable: find.byType(Scrollable),
+        );
+        expect(itemFinder, findsOneWidget);
+      }
+    });
 
     testWidgets(
       'tapping an unselected bottle equips it directly and updates GameService',
@@ -124,11 +126,14 @@ void main() {
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
+        final gameService = GameService.instance;
+        gameService.unlockBottleForTesting('conical_flask');
+        gameService.unlockBottleForTesting('curvy_bottle');
+        gameService.unlockBottleForTesting('square_bottle');
+        expect(gameService.selectedBottleId, equals('classic_tube'));
+
         await tester.pumpWidget(const MaterialApp(home: BottlesScreen()));
         await tester.pumpAndSettle();
-
-        final gameService = GameService.instance;
-        expect(gameService.selectedBottleId, equals('classic_tube'));
 
         // Tap Conical Flask
         final conicalFlaskFinder = find.text('Conical Flask');

@@ -12,6 +12,7 @@ class LevelCompleteDialog extends StatefulWidget {
   final int? bestStars;
   final int streak;
   final int maxLevel;
+  final int coinsAwarded;
   final VoidCallback onNextLevel;
   final VoidCallback onPlayAgain;
 
@@ -23,6 +24,7 @@ class LevelCompleteDialog extends StatefulWidget {
     this.bestStars,
     required this.streak,
     this.maxLevel = 100,
+    this.coinsAwarded = 50,
     required this.onNextLevel,
     required this.onPlayAgain,
   });
@@ -193,6 +195,10 @@ class _LevelCompleteDialogState extends State<LevelCompleteDialog>
           _buildBestStarsIndicator(),
           const SizedBox(height: 8),
 
+          // First-Completion vs Replay Coin Reward Badge
+          _buildCoinsRewardCard(),
+          const SizedBox(height: 8),
+
           // Level Rewards & Progress Stat Cards
           _buildStatsRow(),
           const SizedBox(height: 22),
@@ -253,6 +259,46 @@ class _LevelCompleteDialogState extends State<LevelCompleteDialog>
                     ? const Color(0xFF5B21B6)
                     : const Color(0xFF92400E),
                 letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoinsRewardCard() {
+    final bool isFirst = widget.coinsAwarded > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: isFirst
+            ? const Color(0xFFFEF3C7).withValues(alpha: 0.90)
+            : const Color(0xFFF3F4F6).withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isFirst ? const Color(0xFFF59E0B) : const Color(0xFFD1D5DB),
+          width: 1.2,
+        ),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🪙', style: TextStyle(fontSize: 15)),
+            const SizedBox(width: 6),
+            Text(
+              isFirst
+                  ? '+${widget.coinsAwarded} Coins Earned!'
+                  : '+0 Coins (Reward already collected)',
+              style: TextStyle(
+                fontFamily: 'Outfit',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isFirst
+                    ? const Color(0xFF92400E)
+                    : const Color(0xFF6B7280),
               ),
             ),
           ],

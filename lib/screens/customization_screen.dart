@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 import 'bottles_screen.dart';
 import 'themes_screen.dart';
 
-enum ShopTab { bottles, themes }
+enum ShopTab { bottles, themes, hints }
 
 enum CustomizationTab { tubes, caps, bubbleFx, themes, palettes }
 
@@ -305,12 +305,20 @@ class _ShopViewState extends State<ShopView> {
                     icon: Icons.science_rounded,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Expanded(
                   child: _buildSegmentButton(
                     tab: ShopTab.themes,
                     title: 'Themes (20)',
                     icon: Icons.palette_rounded,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _buildSegmentButton(
+                    tab: ShopTab.hints,
+                    title: 'Hints',
+                    icon: Icons.lightbulb_rounded,
                   ),
                 ),
               ],
@@ -322,9 +330,17 @@ class _ShopViewState extends State<ShopView> {
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
-            child: _activeTab == ShopTab.bottles
-                ? const BottlesGridView(key: ValueKey('shop_bottles_grid'))
-                : const ThemesGridView(key: ValueKey('shop_themes_grid')),
+            child: switch (_activeTab) {
+              ShopTab.bottles => const BottlesGridView(
+                key: ValueKey('shop_bottles_grid'),
+              ),
+              ShopTab.themes => const ThemesGridView(
+                key: ValueKey('shop_themes_grid'),
+              ),
+              ShopTab.hints => const HintsShopCard(
+                key: ValueKey('shop_hints_card'),
+              ),
+            },
           ),
         ),
       ],
@@ -363,30 +379,163 @@ class _ShopViewState extends State<ShopView> {
                 : null,
           ),
           alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected
-                    ? const Color(0xFF6D28D9)
-                    : const Color(0xFF6B5B85),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: 'Outfit',
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
                   color: isSelected
                       ? const Color(0xFF6D28D9)
                       : const Color(0xFF6B5B85),
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Outfit',
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected
+                        ? const Color(0xFF6D28D9)
+                        : const Color(0xFF6B5B85),
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class HintsShopCard extends StatelessWidget {
+  const HintsShopCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final gameService = GameService.instance;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFDDD0F7)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6D28D9).withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFBBF24)),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.lightbulb_rounded,
+                  color: Color(0xFFD97706),
+                  size: 32,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Puzzle Hints',
+              style: TextStyle(
+                fontFamily: 'Outfit',
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF32145A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDE5FF),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFDDD0F7)),
+              ),
+              child: const Text(
+                '🪙 25 Coins per Hint',
+                style: TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF6D28D9),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Stuck on a challenging level? Tap the HINT button in any puzzle to highlight the next valid water pour.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 13,
+                color: Color(0xFF6B5B85),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F3FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 20,
+                    color: Color(0xFF10B981),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Fair Play Guarantee: Coins are only deducted when a valid hint move is available and executed. You will never be charged if no move exists.',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 11,
+                        color: Color(0xFF32145A),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListenableBuilder(
+              listenable: gameService,
+              builder: (context, _) => Text(
+                'Your balance: 🪙 ${gameService.coins} coins',
+                style: const TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B5B85),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

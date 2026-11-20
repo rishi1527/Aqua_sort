@@ -9,7 +9,7 @@ import '../services/level_generator.dart';
 import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 import 'customization_screen.dart';
-import 'stats_screen.dart';
+import 'leaderboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,11 +18,12 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final GameService _gameService = GameService.instance;
   late final PageController _pageController;
 
-  int _currentTabIndex = 1; // 0: Shop, 1: Map (Home), 2: Achievements
+  int _currentTabIndex = 1; // 0: Shop, 1: Map (Home), 2: Leaderboard
   late int _selectedLevel;
   int _lastKnownCurrentLevel = 1;
   bool _isNavigating = false;
@@ -112,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedLevel = _gameService.currentLevel
         .clamp(1, GameService.maxLevel)
         .toInt();
@@ -148,12 +150,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _gameService.removeListener(_onStateChange);
     _pageController.dispose();
     _scrollController.dispose();
     _pulseController.dispose();
     _ambientController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _gameService.checkMidnightRefresh();
+    }
   }
 
   void _onStateChange() {
@@ -258,6 +268,171 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             });
           }
         });
+  }
+
+  void _openDailyRewardDialog(BuildContext context) {
+    SoundService.instance.playButtonTap();
+    HapticService.instance.buttonTap();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final bool canClaim = _gameService.canClaimDailyReward();
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF2E1065), Color(0xFF1E0A3C)],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFFEC4899).withValues(alpha: 0.6),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFEC4899).withValues(alpha: 0.3),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFDE047), Color(0xFFEAB308)],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.card_giftcard_rounded,
+                          color: Color(0xFF78350F),
+                          size: 34,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'DAILY REWARD',
+                      style: TextStyle(
+                        fontFamily: 'Outfit',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      canClaim ? 'Claim your daily bonus of 30 coins!' : 'You have already claimed today\'s reward.\nNext reward available tomorrow!',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 13,
+                        color: Color(0xFFE9D5FF),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFFDDD0F7).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🪙', style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '+30 Coins',
+                            style: TextStyle(
+                              fontFamily: 'Outfit',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: canClaim
+                                  ? const Color(0xFFFDE047)
+                                  : Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: canClaim
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFF4B5563),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: canClaim
+                          ? () async {
+                              final claimed = await _gameService
+                                  .claimDailyReward();
+                              if (claimed) {
+                                SoundService.instance.playLevelComplete();
+                                HapticService.instance.levelComplete();
+                                setDialogState(() {});
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Claimed +30 coins!'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          : null,
+                      child: Text(
+                        canClaim ? 'CLAIM 30 COINS' : 'CLAIMED FOR TODAY',
+                        style: const TextStyle(
+                          fontFamily: 'Outfit',
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogCtx).pop(),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(color: Color(0xFFE9D5FF)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _openSettings() {
@@ -738,8 +913,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       // 1: Map Tab (Journey Map with transparent floating HUD + dedicated Play button)
                       _buildJourneyMapTab(),
 
-                      // 2: Achievements Tab (Stats & Records)
-                      const StatsContentView(),
+                      // 2: Leaderboard Tab (Global Rankings & Podium)
+                      const LeaderboardScreen(showBackButton: false),
                     ],
                   ),
                 ),
@@ -859,38 +1034,136 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
 
-          // Right: Translucent Settings Button with Hot Pink Glow
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _openSettings,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E0A3C).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFEC4899).withValues(alpha: 0.85),
-                    width: 1.8,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFEC4899).withValues(alpha: 0.35),
-                      blurRadius: 10,
+          // Right: Daily Reward & Translucent Settings Button
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Daily Reward Button with status indicator
+              ListenableBuilder(
+                listenable: _gameService,
+                builder: (context, _) {
+                  final bool canClaim = _gameService.canClaimDailyReward();
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      key: const ValueKey('daily_reward_button'),
+                      onTap: () => _openDailyRewardDialog(context),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E0A3C)
+                                  .withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: canClaim
+                                    ? const Color(0xFFFBBF24)
+                                          .withValues(alpha: 0.90)
+                                    : const Color(0xFFEC4899)
+                                          .withValues(alpha: 0.85),
+                                width: 1.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: canClaim
+                                      ? const Color(0xFFFBBF24)
+                                            .withValues(alpha: 0.40)
+                                      : const Color(0xFFEC4899)
+                                            .withValues(alpha: 0.25),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                canClaim
+                                    ? Icons.card_giftcard_rounded
+                                    : Icons.check_circle_outline_rounded,
+                                color: canClaim
+                                    ? const Color(0xFFFDE047)
+                                    : const Color(0xFFE9D5FF)
+                                          .withValues(alpha: 0.85),
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                          if (canClaim)
+                            Positioned(
+                              top: -4,
+                              right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE11D48),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  '+30',
+                                  style: TextStyle(
+                                    fontFamily: 'Outfit',
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.settings_rounded,
-                    color: const Color(0xFFE9D5FF).withValues(alpha: 0.90),
-                    size: 22,
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+
+              // Settings Button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openSettings,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E0A3C).withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFEC4899).withValues(alpha: 0.85),
+                        width: 1.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEC4899)
+                              .withValues(alpha: 0.35),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.settings_rounded,
+                        color: const Color(0xFFE9D5FF).withValues(alpha: 0.90),
+                        size: 22,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -1252,7 +1525,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // 2. Bottom Navigation Bar with Consistent Raised Purple Selection across Shop, Map & Achievements
+  // 2. Bottom Navigation Bar with Consistent Raised Purple Selection across Shop, Map & Leaderboard
   Widget _buildBottomNav() {
     return Container(
       decoration: const BoxDecoration(
@@ -1278,11 +1551,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               label: 'Map',
             ),
 
-            // 3. Achievements Tab
+            // 3. Leaderboard Tab
             _buildAnimatedNavItem(
               index: 2,
-              icon: Icons.military_tech_rounded,
-              label: 'Achievements',
+              icon: Icons.emoji_events_rounded,
+              label: 'Leaderboard',
             ),
           ],
         ),
@@ -1898,7 +2171,7 @@ class _WindingPathPainter extends CustomPainter {
 // Enchanted Tropical Foliage Painter with Subtle, Restrained Ambient Swaying
 class _TropicalFoliagePainter extends CustomPainter {
   final double progress; // 0.0 to 1.0 from ambient animation
-  final int tabIndex; // 0: Shop, 1: Map, 2: Achievements
+  final int tabIndex; // 0: Shop, 1: Map, 2: Leaderboard
 
   _TropicalFoliagePainter({required this.progress, required this.tabIndex});
 

@@ -83,7 +83,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // Still level 1 with 0 moves
-    expect(find.text('0'), findsOneWidget);
+    expect(find.text('0'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

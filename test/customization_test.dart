@@ -10,13 +10,18 @@ import 'package:water_sort_game/widgets/bottle_geometry.dart';
 
 void main() {
   setUp(() {
+    GameService.instance.disableMidnightTimerForTesting();
     GameService.instance.resetProgress();
   });
 
+  tearDown(() {
+    GameService.instance.cancelMidnightTimerForTesting();
+  });
+
   group('Customization Models & Economy Logic', () {
-    test('GameService initializes with default selections and 1,250 coins', () {
+    test('GameService initializes with default selections and 0 coins', () {
       final service = GameService.instance;
-      expect(service.coins, equals(1250));
+      expect(service.coins, equals(0));
       expect(service.selectedBottleId, equals('classic_tube'));
       expect(service.selectedCapId, equals('cap_none'));
       expect(service.selectedBubbleFxId, equals('fx_soda_fizz'));
@@ -108,6 +113,7 @@ void main() {
       'Coin spending validates balances and prevents duplicate deductions',
       () {
         final service = GameService.instance;
+        service.setCoinsForTesting(1250);
         expect(service.coins, equals(1250));
 
         // spend 250 coins
@@ -124,6 +130,7 @@ void main() {
 
     test('Unlocking with coins adds item to unlocked set', () {
       final service = GameService.instance;
+      service.setCoinsForTesting(1250);
       expect(service.unlockedCapIds.contains('cap_amethyst'), isFalse);
 
       final success = service.unlockCapWithCoins('cap_amethyst');
@@ -152,7 +159,7 @@ void main() {
         // Header is rendered
         expect(find.text('Customization'), findsOneWidget);
         expect(find.text('Personalize your gameplay'), findsOneWidget);
-        expect(find.text('1,250'), findsOneWidget);
+        expect(find.text('0'), findsOneWidget);
         expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
 
         // Verify category tabs row is completely absent

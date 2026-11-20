@@ -12,7 +12,12 @@ import 'package:water_sort_game/widgets/background_painter.dart';
 
 void main() {
   setUp(() {
+    GameService.instance.disableMidnightTimerForTesting();
     GameService.instance.resetProgress();
+  });
+
+  tearDown(() {
+    GameService.instance.cancelMidnightTimerForTesting();
   });
 
   group('20 Themes Model & Asset Verification', () {
@@ -22,9 +27,14 @@ void main() {
         expect(theme.id.isNotEmpty, isTrue);
         expect(theme.name.isNotEmpty, isTrue);
         expect(theme.description.isNotEmpty, isTrue);
-        expect(theme.isFree, isTrue);
         expect(theme.requiredLevel, equals(1));
-        expect(theme.coinCost, equals(0));
+        if (theme.id == 'simple') {
+          expect(theme.isFree, isTrue);
+          expect(theme.coinCost, equals(0));
+        } else {
+          expect(theme.isFree, isFalse);
+          expect(theme.coinCost, greaterThan(0));
+        }
       }
     });
 
@@ -104,23 +114,19 @@ void main() {
   });
 
   group('GameService Theme Management', () {
-    test('Initializes with simple default and unlocks all 20 themes', () {
+    test('Initializes with simple default and leaves others unowned until purchased', () {
       final service = GameService.instance;
       expect(service.selectedThemeId, equals('simple'));
       expect(service.currentTheme.name, equals('Simple'));
+      expect(service.isThemeOwned('simple'), isTrue);
 
-      for (final theme in GameTheme.allThemes) {
-        expect(
-          service.unlockedThemeIds.contains(theme.id),
-          isTrue,
-          reason: '${theme.id} should be unlocked by default',
-        );
-      }
-      expect(service.unlockedThemeIds.contains('royal_castle'), isFalse);
+      expect(service.isThemeOwned('moonlight_lake'), isFalse);
+      expect(service.isThemeOwned('royal_castle'), isFalse);
     });
 
     test('selectTheme equips theme immediately and notifies listeners', () {
       final service = GameService.instance;
+      service.unlockThemeForTesting('cherry_blossom');
       bool notified = false;
       void listener() => notified = true;
       service.addListener(listener);
@@ -135,6 +141,7 @@ void main() {
 
     test('selectTheme maps royal_castle to simple safely', () {
       final service = GameService.instance;
+      service.unlockThemeForTesting('moonlight_lake');
       service.selectTheme('moonlight_lake');
       expect(service.selectedThemeId, equals('moonlight_lake'));
 
@@ -206,6 +213,7 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final service = GameService.instance;
+      service.unlockThemeForTesting('moonlight_lake');
       expect(service.selectedThemeId, equals('simple'));
 
       await tester.pumpWidget(const MaterialApp(home: ThemesScreen()));
@@ -256,6 +264,7 @@ void main() {
       );
 
       // Switch to sunset_beach
+      GameService.instance.unlockThemeForTesting('sunset_beach');
       GameService.instance.selectTheme('sunset_beach');
       await tester.pump();
 
@@ -279,6 +288,7 @@ void main() {
       ];
 
       for (final id in sevenThemeIds) {
+        GameService.instance.unlockThemeForTesting(id);
         GameService.instance.selectTheme(id);
         await tester.pump();
 
@@ -415,7 +425,10 @@ void main() {
       expect(service.completedLevelsCount, equals(11));
       expect(service.getStarsForLevel(1), equals(3));
       expect(service.getStarsForLevel(11), equals(2));
-      expect(service.coins, equals(2350));
+      expect(
+        service.coins,
+        equals(0),
+      ); // Coins reset to 0 per Economy V2 migration rules
       expect(service.bestStreak, equals(8));
       expect(service.currentStreak, equals(3));
       // Migrated cleanly
@@ -427,6 +440,7 @@ void main() {
       final memory = InMemoryStorageAdapter();
       service.setStorageAdapterForTesting(memory);
 
+      service.unlockThemeForTesting('cherry_blossom');
       service.selectTheme('cherry_blossom');
       expect(service.selectedThemeId, equals('cherry_blossom'));
 

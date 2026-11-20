@@ -35,7 +35,7 @@ void main() {
     // C. 3-tab Bottom Navigation
     expect(find.text('Shop'), findsOneWidget);
     expect(find.text('Map'), findsOneWidget);
-    expect(find.text('Achievements'), findsOneWidget);
+    expect(find.text('Leaderboard'), findsOneWidget);
   });
 
   testWidgets('HomeScreen switches to Shop tab', (WidgetTester tester) async {
@@ -51,18 +51,18 @@ void main() {
     expect(find.text('Themes (20)'), findsOneWidget);
   });
 
-  testWidgets('HomeScreen switches to Achievements tab', (
+  testWidgets('HomeScreen switches to Leaderboard tab', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
     await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.text('Achievements'));
+    await tester.tap(find.text('Leaderboard'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Novice Sorter'), findsOneWidget);
-    expect(find.text('Completed'), findsOneWidget);
+    expect(find.text('LEADERBOARD'), findsOneWidget);
+    expect(find.text('YOUR RANK'), findsOneWidget);
   });
 
   testWidgets('HomeScreen navigates to WaterSortScreen on Play tap', (
@@ -94,7 +94,7 @@ void main() {
       expect(find.text('LEVEL'), findsOneWidget);
       expect(find.text('MOVES'), findsOneWidget);
       expect(find.text('1'), findsOneWidget); // Level 1
-      expect(find.text('0'), findsOneWidget); // 0 moves
+      expect(find.text('0'), findsWidgets); // 0 moves and 0 coins
 
       // 4 Bottom Controls
       expect(find.text('UNDO'), findsOneWidget);
@@ -152,7 +152,7 @@ void main() {
     await tester.pump();
 
     // Move count is reset to 0
-    expect(find.text('0'), findsOneWidget);
+    expect(find.text('0'), findsWidgets);
   });
 
   testWidgets(

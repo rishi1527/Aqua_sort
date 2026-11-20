@@ -52,9 +52,14 @@ class RewardedAdService {
   /// Whether rewarded ads are currently available.
   bool get isAdAvailable => _provider.isAdAvailable;
 
+  /// Displays a rewarded ad and returns the outcome.
+  Future<RewardedAdResult> showRewardedAd() async {
+    return await _provider.showRewardedAd();
+  }
+
   /// Displays a rewarded ad for 60 seconds of extra time.
   Future<RewardedAdResult> showExtraTimeAd() async {
-    return await _provider.showRewardedAd();
+    return await showRewardedAd();
   }
 
   /// Sets a custom provider for testing purposes.
@@ -68,5 +73,8 @@ class RewardedAdService {
   void resetProvider() {
     _provider = const PlaceholderRewardedAdProvider();
   }
-}
 
+  /// Alias for test consistency.
+  @visibleForTesting
+  void resetProviderForTesting() => resetProvider();
+}

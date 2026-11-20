@@ -32,7 +32,7 @@ void main() {
         // 3-tab bottom navigation
         expect(find.text('Shop'), findsOneWidget);
         expect(find.text('Map'), findsOneWidget);
-        expect(find.text('Achievements'), findsOneWidget);
+        expect(find.text('Leaderboard'), findsOneWidget);
 
         // Zero exceptions / zero overflows
         expect(tester.takeException(), isNull);
@@ -56,7 +56,7 @@ void main() {
         expect(find.text('Play'), findsOneWidget);
         expect(find.text('Map'), findsOneWidget);
         expect(find.text('Shop'), findsOneWidget);
-        expect(find.text('Achievements'), findsOneWidget);
+        expect(find.text('Leaderboard'), findsOneWidget);
 
         // Map tab PageView uses NeverScrollableScrollPhysics (non-scrollable outer page view)
         final pageView = tester.widget<PageView>(find.byType(PageView));
